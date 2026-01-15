@@ -31,6 +31,8 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
+use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -790,6 +792,30 @@ fn remap_placeholders_for_message(message: UserMessage, next_label: &mut usize) 
         text_elements: rebuilt_elements,
         mention_bindings,
     }
+}
+
+fn play_cleared_sound() {
+    if cfg!(test) {
+        return;
+    }
+
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
+    let path = PathBuf::from(home).join("work/bin/cleared.mp3");
+    if !path.is_file() {
+        return;
+    }
+
+    let _ = Command::new("mpg123")
+        .arg("-f")
+        .arg("16000")
+        .arg("-q")
+        .arg(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
 }
 
 impl ChatWidget {
@@ -2282,6 +2308,7 @@ impl ChatWidget {
                     elapsed_seconds,
                     None,
                 ));
+                play_cleared_sound();
                 self.needs_final_message_separator = false;
                 self.had_work_activity = false;
             } else if self.needs_final_message_separator {
