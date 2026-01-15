@@ -57,7 +57,7 @@ pub(crate) struct FooterProps {
 /// (for example, showing `QuitShortcutReminder` only while its timer is active).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum FooterMode {
-    /// Transient "press again to quit" reminder (Ctrl+C/Ctrl+D).
+    /// Transient "press again to quit" reminder.
     QuitShortcutReminder,
     ShortcutSummary,
     ShortcutOverlay,
@@ -65,8 +65,8 @@ pub(crate) enum FooterMode {
     ContextOnly,
 }
 
-pub(crate) fn toggle_shortcut_mode(current: FooterMode, ctrl_c_hint: bool) -> FooterMode {
-    if ctrl_c_hint && matches!(current, FooterMode::QuitShortcutReminder) {
+pub(crate) fn toggle_shortcut_mode(current: FooterMode, quit_hint_visible: bool) -> FooterMode {
+    if quit_hint_visible && matches!(current, FooterMode::QuitShortcutReminder) {
         return current;
     }
 
@@ -485,7 +485,7 @@ const SHORTCUTS: &[ShortcutDescriptor] = &[
     ShortcutDescriptor {
         id: ShortcutId::Quit,
         bindings: &[ShortcutBinding {
-            key: key_hint::ctrl(KeyCode::Char('c')),
+            key: key_hint::ctrl(KeyCode::Char('d')),
             condition: DisplayCondition::Always,
         }],
         prefix: "",
@@ -531,7 +531,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -550,7 +550,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: true,
@@ -569,7 +569,7 @@ mod tests {
                 use_shift_enter_hint: true,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -581,14 +581,14 @@ mod tests {
         );
 
         snapshot_footer(
-            "footer_ctrl_c_quit_idle",
+            "footer_ctrl_d_quit_idle",
             FooterProps {
                 mode: FooterMode::QuitShortcutReminder,
                 esc_backtrack_hint: false,
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -600,14 +600,14 @@ mod tests {
         );
 
         snapshot_footer(
-            "footer_ctrl_c_quit_running",
+            "footer_ctrl_d_quit_running",
             FooterProps {
                 mode: FooterMode::QuitShortcutReminder,
                 esc_backtrack_hint: false,
                 use_shift_enter_hint: false,
                 is_task_running: true,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -626,7 +626,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -645,7 +645,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -664,7 +664,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: true,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: Some(72),
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -683,7 +683,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: Some(123_456),
                 transcript_scrolled: false,
@@ -702,7 +702,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: true,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -721,7 +721,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: true,
                 steer_enabled: true,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,
@@ -740,7 +740,7 @@ mod tests {
                 use_shift_enter_hint: false,
                 is_task_running: false,
                 steer_enabled: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 transcript_scrolled: false,

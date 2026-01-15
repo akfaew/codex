@@ -15,7 +15,7 @@ impl NewTaskPage {
             ("Shift+⏎", "newline"),
             ("Ctrl+O", "env"),
             ("Ctrl+N", "attempts"),
-            ("Ctrl+C", "quit"),
+            ("Ctrl+C", "cancel"),
         ]);
         Self {
             composer,
