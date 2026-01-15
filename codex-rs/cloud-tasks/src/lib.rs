@@ -1336,7 +1336,7 @@ pub async fn run_main(cli: Cli, _codex_linux_sandbox_exe: Option<PathBuf>) -> an
                         }
                     }
                     Some(Ok(Event::Key(key))) if matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) => {
-                        // Treat Ctrl-C like pressing 'q' in the current context.
+                        // Treat Ctrl-C like canceling the current context.
                         if key.modifiers.contains(KeyModifiers::CONTROL)
                             && matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
                         {
@@ -1358,8 +1358,6 @@ pub async fn run_main(cli: Cli, _codex_linux_sandbox_exe: Option<PathBuf>) -> an
                             } else if app.diff_overlay.is_some() {
                                 app.diff_overlay = None;
                                 needs_redraw = true;
-                            } else {
-                                break 0;
                             }
                             // Render updated state immediately before continuing to next loop iteration.
                             render_if_needed(&mut terminal, &mut app, &mut needs_redraw)?;
