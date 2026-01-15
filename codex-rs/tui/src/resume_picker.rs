@@ -407,7 +407,14 @@ impl PickerState {
     async fn handle_key(&mut self, key: KeyEvent) -> Result<Option<SessionSelection>> {
         match key.code {
             KeyCode::Esc => return Ok(Some(SessionSelection::StartFresh)),
-            KeyCode::Char('c')
+            KeyCode::Char('c') | KeyCode::Char('C')
+                if key
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL) =>
+            {
+                return Ok(None);
+            }
+            KeyCode::Char('d') | KeyCode::Char('D')
                 if key
                     .modifiers
                     .contains(crossterm::event::KeyModifiers::CONTROL) =>
@@ -904,7 +911,7 @@ fn draw_picker(tui: &mut Tui, state: &PickerState) -> std::io::Result<()> {
             key_hint::plain(KeyCode::Esc).into(),
             " to start new ".dim(),
             "    ".dim(),
-            key_hint::ctrl(KeyCode::Char('c')).into(),
+            key_hint::ctrl(KeyCode::Char('d')).into(),
             " to quit ".dim(),
             "    ".dim(),
             key_hint::plain(KeyCode::Tab).into(),
@@ -1818,7 +1825,7 @@ mod tests {
                 key_hint::plain(KeyCode::Esc).into(),
                 " to start new ".dim(),
                 "    ".dim(),
-                key_hint::ctrl(KeyCode::Char('c')).into(),
+                key_hint::ctrl(KeyCode::Char('d')).into(),
                 " to quit ".dim(),
                 "    ".dim(),
                 key_hint::plain(KeyCode::Tab).into(),

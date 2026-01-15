@@ -116,7 +116,7 @@ impl CollaborationModeIndicator {
 /// (for example, showing `QuitShortcutReminder` only while its timer is active).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum FooterMode {
-    /// Transient "press again to quit" reminder (Ctrl+C/Ctrl+D).
+    /// Transient "press again to quit" reminder.
     QuitShortcutReminder,
     /// Multi-line shortcut overlay shown after pressing `?`.
     ShortcutOverlay,
@@ -133,10 +133,10 @@ pub(crate) enum FooterMode {
 
 pub(crate) fn toggle_shortcut_mode(
     current: FooterMode,
-    ctrl_c_hint: bool,
+    quit_hint_visible: bool,
     is_empty: bool,
 ) -> FooterMode {
-    if ctrl_c_hint && matches!(current, FooterMode::QuitShortcutReminder) {
+    if quit_hint_visible && matches!(current, FooterMode::QuitShortcutReminder) {
         return current;
     }
 
@@ -961,7 +961,7 @@ const SHORTCUTS: &[ShortcutDescriptor] = &[
     ShortcutDescriptor {
         id: ShortcutId::Quit,
         bindings: &[ShortcutBinding {
-            key: key_hint::ctrl(KeyCode::Char('c')),
+            key: key_hint::ctrl(KeyCode::Char('d')),
             condition: DisplayCondition::Always,
         }],
         prefix: "",
@@ -1192,7 +1192,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1210,7 +1210,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1228,7 +1228,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: true,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1237,7 +1237,7 @@ mod tests {
         );
 
         snapshot_footer(
-            "footer_ctrl_c_quit_idle",
+            "footer_ctrl_d_quit_idle",
             FooterProps {
                 mode: FooterMode::QuitShortcutReminder,
                 esc_backtrack_hint: false,
@@ -1246,7 +1246,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1255,7 +1255,7 @@ mod tests {
         );
 
         snapshot_footer(
-            "footer_ctrl_c_quit_running",
+            "footer_ctrl_d_quit_running",
             FooterProps {
                 mode: FooterMode::QuitShortcutReminder,
                 esc_backtrack_hint: false,
@@ -1264,7 +1264,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1282,7 +1282,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1300,7 +1300,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1318,7 +1318,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: Some(72),
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1336,7 +1336,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: Some(123_456),
                 status_line_value: None,
@@ -1354,7 +1354,7 @@ mod tests {
                 steer_enabled: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1372,7 +1372,7 @@ mod tests {
                 steer_enabled: true,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 context_window_percent: None,
                 context_window_used_tokens: None,
                 status_line_value: None,
@@ -1388,7 +1388,7 @@ mod tests {
             steer_enabled: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             context_window_percent: None,
             context_window_used_tokens: None,
             status_line_value: None,
@@ -1417,7 +1417,7 @@ mod tests {
             steer_enabled: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             context_window_percent: None,
             context_window_used_tokens: None,
             status_line_value: None,
