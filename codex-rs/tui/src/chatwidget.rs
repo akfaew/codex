@@ -24,6 +24,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::path::PathBuf;
+use std::process::Command;
+use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -534,6 +536,30 @@ fn create_initial_user_message(text: String, image_paths: Vec<PathBuf>) -> Optio
     } else {
         Some(UserMessage { text, image_paths })
     }
+}
+
+fn play_cleared_sound() {
+    if cfg!(test) {
+        return;
+    }
+
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
+    let path = PathBuf::from(home).join("work/bin/cleared.mp3");
+    if !path.is_file() {
+        return;
+    }
+
+    let _ = Command::new("mpg123")
+        .arg("-f")
+        .arg("16000")
+        .arg("-q")
+        .arg(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
 }
 
 impl ChatWidget {
@@ -1365,6 +1391,7 @@ impl ChatWidget {
                     .status_widget()
                     .map(super::status_indicator_widget::StatusIndicatorWidget::elapsed_seconds);
                 self.add_to_history(history_cell::FinalMessageSeparator::new(elapsed_seconds));
+                play_cleared_sound();
                 self.needs_final_message_separator = false;
                 self.had_work_activity = false;
             } else if self.needs_final_message_separator {
