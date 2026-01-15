@@ -7,9 +7,8 @@
 //! Input routing is layered: `BottomPane` decides which local surface receives a key (view vs
 //! composer), while higher-level intent such as "interrupt" or "quit" is decided by the parent
 //! widget (`ChatWidget`). This split matters for Ctrl+C/Ctrl+D: the bottom pane gives the active
-//! view the first chance to consume Ctrl+C (typically to dismiss itself), and `ChatWidget` may
-//! treat an unhandled Ctrl+C as an interrupt or as the first press of a double-press quit
-//! shortcut.
+//! view the first chance to consume Ctrl+C (typically to dismiss itself), and `ChatWidget` can
+//! treat an unhandled Ctrl+C as an interrupt while Ctrl+D handles quitting.
 //!
 //! Some UI is time-based rather than input-based, such as the transient "press again to quit"
 //! hint. The pane schedules redraws so those hints can expire even when the UI is otherwise idle.
@@ -19,7 +18,6 @@ use crate::app_event::ConnectorsSnapshot;
 use crate::app_event_sender::AppEventSender;
 use crate::bottom_pane::queued_user_messages::QueuedUserMessages;
 use crate::bottom_pane::unified_exec_footer::UnifiedExecFooter;
-use crate::key_hint;
 use crate::key_hint::KeyBinding;
 use crate::render::renderable::FlexRenderable;
 use crate::render::renderable::Renderable;
@@ -102,10 +100,10 @@ pub(crate) use feedback_view::FeedbackNoteView;
 /// - `ChatWidget`: arming the double-press quit shortcut.
 /// - `BottomPane`/`ChatComposer`: rendering and expiring the footer hint.
 ///
-/// Keeping a single value ensures Ctrl+C and Ctrl+D behave identically.
+/// Keeping a single value ensures quit shortcut behavior stays consistent.
 pub(crate) const QUIT_SHORTCUT_TIMEOUT: Duration = Duration::from_secs(1);
 
-/// Whether Ctrl+C/Ctrl+D require a second press to quit.
+/// Whether Ctrl+D requires a second press to quit.
 ///
 /// This UX experiment was enabled by default, but requiring a double press to quit feels janky in
 /// practice (especially for users accustomed to shells and other TUIs). Disable it for now while we
@@ -384,8 +382,7 @@ impl BottomPane {
     /// An active modal view is given the first chance to consume the key (typically to dismiss
     /// itself). If no view is active, Ctrl+C clears draft composer input.
     ///
-    /// This method may show the quit shortcut hint as a user-visible acknowledgement that Ctrl+C
-    /// was received, but it does not decide whether the process should exit; `ChatWidget` owns the
+    /// This method does not decide whether the process should exit; `ChatWidget` owns the
     /// quit/interrupt state machine and uses the result to decide what happens next.
     pub(crate) fn on_ctrl_c(&mut self) -> CancellationEvent {
         if let Some(view) = self.view_stack.last_mut() {
@@ -395,7 +392,6 @@ impl BottomPane {
                     self.view_stack.pop();
                     self.on_active_view_complete();
                 }
-                self.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')));
                 self.request_redraw();
             }
             event
@@ -404,8 +400,6 @@ impl BottomPane {
         } else {
             self.view_stack.pop();
             self.clear_composer_for_ctrl_c();
-            self.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')));
-            self.request_redraw();
             CancellationEvent::Handled
         }
     }

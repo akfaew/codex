@@ -132,7 +132,7 @@ impl OssSelectionWidget<'_> {
 
         contents.push(Line::from(""));
         contents.push(
-            Line::from("  Press Enter to select • Ctrl+C to exit").add_modifier(Modifier::DIM),
+            Line::from("  Press Enter to select • Ctrl+D to exit").add_modifier(Modifier::DIM),
         );
 
         let confirmation_prompt = Paragraph::new(contents).wrap(Wrap { trim: false });
@@ -179,7 +179,7 @@ impl OssSelectionWidget<'_> {
 
     fn handle_select_key(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('c')
+            KeyCode::Char('d')
                 if key_event
                     .modifiers
                     .contains(crossterm::event::KeyModifiers::CONTROL) =>

@@ -136,7 +136,6 @@ use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
 use crossterm::event::KeyModifiers;
-use rand::Rng;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
@@ -570,8 +569,7 @@ pub(crate) struct ChatWidget {
     quit_shortcut_expires_at: Option<Instant>,
     /// Tracks which quit shortcut key was pressed first.
     ///
-    /// We require the second press to match this key so `Ctrl+C` followed by
-    /// `Ctrl+D` (or vice versa) doesn't quit accidentally.
+    /// We require the second press to match this key so only repeated quit presses can exit.
     quit_shortcut_key: Option<KeyBinding>,
     // Simple review mode flag; used to adjust layout and banners.
     is_review_mode: bool,
@@ -2577,8 +2575,6 @@ impl ChatWidget {
         let mut config = config;
         config.model = model.clone();
         let prevent_idle_sleep = config.features.enabled(Feature::PreventIdleSleep);
-        let mut rng = rand::rng();
-        let placeholder = PLACEHOLDERS[rng.random_range(0..PLACEHOLDERS.len())].to_string();
         let codex_op_tx = spawn_agent(config.clone(), app_event_tx.clone(), thread_manager);
 
         let model_override = model.as_deref();
@@ -2614,7 +2610,7 @@ impl ChatWidget {
                 app_event_tx,
                 has_input_focus: true,
                 enhanced_keys_supported,
-                placeholder_text: placeholder,
+                placeholder_text: String::new(),
                 disable_paste_burst: config.disable_paste_burst,
                 animations_enabled: config.animations,
                 skills: None,
@@ -2893,9 +2889,6 @@ impl ChatWidget {
         } = common;
         let model = model.filter(|m| !m.trim().is_empty());
         let prevent_idle_sleep = config.features.enabled(Feature::PreventIdleSleep);
-        let mut rng = rand::rng();
-        let placeholder = PLACEHOLDERS[rng.random_range(0..PLACEHOLDERS.len())].to_string();
-
         let model_override = model.as_deref();
         let header_model = model
             .clone()
@@ -2931,7 +2924,7 @@ impl ChatWidget {
                 app_event_tx,
                 has_input_focus: true,
                 enhanced_keys_supported,
-                placeholder_text: placeholder,
+                placeholder_text: String::new(),
                 disable_paste_burst: config.disable_paste_burst,
                 animations_enabled: config.animations,
                 skills: None,
@@ -4233,7 +4226,7 @@ impl ChatWidget {
     /// Request a shutdown-first quit.
     ///
     /// This is used for explicit quit commands (`/quit`, `/exit`, `/logout`) and for
-    /// the double-press Ctrl+C/Ctrl+D quit shortcut.
+    /// the double-press Ctrl+D quit shortcut.
     fn request_quit_without_confirmation(&self) {
         self.app_event_tx
             .send(AppEvent::Exit(ExitMode::ShutdownFirst));
@@ -6622,45 +6615,16 @@ impl ChatWidget {
 
     /// Handles a Ctrl+C press at the chat-widget layer.
     ///
-    /// The first press arms a time-bounded quit shortcut and shows a footer hint via the bottom
-    /// pane. If cancellable work is active, Ctrl+C also submits `Op::Interrupt` after the shortcut
-    /// is armed.
-    ///
-    /// If the same quit shortcut is pressed again before expiry, this requests a shutdown-first
-    /// quit.
+    /// Ctrl+C is reserved for local cancellation (clearing input, dismissing views) and
+    /// interrupting active work; it never quits the app.
     fn on_ctrl_c(&mut self) {
-        let key = key_hint::ctrl(KeyCode::Char('c'));
-        let modal_or_popup_active = !self.bottom_pane.no_modal_or_popup_active();
+        self.bottom_pane.clear_quit_shortcut_hint();
+        self.quit_shortcut_expires_at = None;
+        self.quit_shortcut_key = None;
+
         if self.bottom_pane.on_ctrl_c() == CancellationEvent::Handled {
-            if DOUBLE_PRESS_QUIT_SHORTCUT_ENABLED {
-                if modal_or_popup_active {
-                    self.quit_shortcut_expires_at = None;
-                    self.quit_shortcut_key = None;
-                    self.bottom_pane.clear_quit_shortcut_hint();
-                } else {
-                    self.arm_quit_shortcut(key);
-                }
-            }
             return;
         }
-
-        if !DOUBLE_PRESS_QUIT_SHORTCUT_ENABLED {
-            if self.is_cancellable_work_active() {
-                self.submit_op(Op::Interrupt);
-            } else {
-                self.request_quit_without_confirmation();
-            }
-            return;
-        }
-
-        if self.quit_shortcut_active_for(key) {
-            self.quit_shortcut_expires_at = None;
-            self.quit_shortcut_key = None;
-            self.request_quit_without_confirmation();
-            return;
-        }
-
-        self.arm_quit_shortcut(key);
 
         if self.is_cancellable_work_active() {
             self.submit_op(Op::Interrupt);
@@ -6709,7 +6673,7 @@ impl ChatWidget {
     /// Arm the double-press quit shortcut and show the footer hint.
     ///
     /// This keeps the state machine (`quit_shortcut_*`) in `ChatWidget`, since
-    /// it is the component that interprets Ctrl+C vs Ctrl+D and decides whether
+    /// it is the component that interprets the quit shortcut and decides whether
     /// quitting is currently allowed, while delegating rendering to `BottomPane`.
     fn arm_quit_shortcut(&mut self, key: KeyBinding) {
         self.quit_shortcut_expires_at = Instant::now()
@@ -6719,7 +6683,7 @@ impl ChatWidget {
         self.bottom_pane.show_quit_shortcut_hint(key);
     }
 
-    // Review mode counts as cancellable work so Ctrl+C interrupts instead of quitting.
+    // Review mode counts as cancellable work so Ctrl+C still interrupts.
     fn is_cancellable_work_active(&self) -> bool {
         self.bottom_pane.is_task_running() || self.is_review_mode
     }
@@ -7254,17 +7218,6 @@ impl Notification {
 }
 
 const AGENT_NOTIFICATION_PREVIEW_GRAPHEMES: usize = 200;
-
-const PLACEHOLDERS: [&str; 8] = [
-    "Explain this codebase",
-    "Summarize recent commits",
-    "Implement {feature}",
-    "Find and fix a bug in @filename",
-    "Write tests for @filename",
-    "Improve documentation in @filename",
-    "Run /review on my current changes",
-    "Use /skills to list available skills",
-];
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.
 // Returns the inner text if found; otherwise `None`.

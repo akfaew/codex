@@ -399,7 +399,7 @@ impl ChatComposer {
             app_event_tx,
             history: ChatComposerHistory::new(),
             quit_shortcut_expires_at: None,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             esc_backtrack_hint: false,
             use_shift_enter_hint,
             dismissed_file_popup_token: None,
@@ -3991,17 +3991,17 @@ mod tests {
                 composer.handle_key_event(KeyEvent::new(KeyCode::Char('?'), KeyModifiers::NONE));
         });
 
-        snapshot_composer_state("footer_mode_ctrl_c_quit", true, |composer| {
-            composer.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')), true);
+        snapshot_composer_state("footer_mode_ctrl_d_quit", true, |composer| {
+            composer.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('d')), true);
         });
 
-        snapshot_composer_state("footer_mode_ctrl_c_interrupt", true, |composer| {
+        snapshot_composer_state("footer_mode_ctrl_d_interrupt", true, |composer| {
             composer.set_task_running(true);
-            composer.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')), true);
+            composer.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('d')), true);
         });
 
-        snapshot_composer_state("footer_mode_ctrl_c_then_esc_hint", true, |composer| {
-            composer.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')), true);
+        snapshot_composer_state("footer_mode_ctrl_d_then_esc_hint", true, |composer| {
+            composer.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('d')), true);
             let _ = composer.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
         });
 

@@ -3062,12 +3062,12 @@ async fn steer_enter_submits_when_plan_stream_is_not_active() {
 }
 
 #[tokio::test]
-async fn ctrl_c_shutdown_works_with_caps_lock() {
+async fn ctrl_c_does_not_quit_with_caps_lock() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
 
     chat.handle_key_event(KeyEvent::new(KeyCode::Char('C'), KeyModifiers::CONTROL));
 
-    assert_matches!(rx.try_recv(), Ok(AppEvent::Exit(ExitMode::ShutdownFirst)));
+    assert_matches!(rx.try_recv(), Err(TryRecvError::Empty));
 }
 
 #[tokio::test]
