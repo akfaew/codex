@@ -10,8 +10,5 @@ install: build
 build:
 	cd codex-rs && cargo build --release -j ${JOBS} -p codex-cli --bin codex
 
-sync:
-	git fetch origin
-
 push:
 	git push akfaew HEAD
