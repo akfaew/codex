@@ -11,4 +11,4 @@ build:
 	cd codex-rs && cargo build --release -j ${JOBS} -p codex-cli --bin codex
 
 push:
-	git push akfaew HEAD
+	git push -f akfaew HEAD
