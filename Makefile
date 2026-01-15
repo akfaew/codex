@@ -1,4 +1,4 @@
-.PHONY: build install
+.PHONY: build install sync push
 
 JOBS != getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4
 
@@ -9,3 +9,9 @@ install: build
 
 build:
 	cd codex-rs && cargo build --release -j ${JOBS} -p codex-cli --bin codex
+
+sync:
+	git fetch origin
+
+push:
+	git push akfaew HEAD
