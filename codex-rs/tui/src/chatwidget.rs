@@ -24,6 +24,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::path::PathBuf;
+use std::process::Command;
+use std::process::Stdio;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -662,6 +664,30 @@ fn remap_placeholders_for_message(message: UserMessage, next_label: &mut usize) 
         local_images: remapped_images,
         text_elements: rebuilt_elements,
     }
+}
+
+fn play_cleared_sound() {
+    if cfg!(test) {
+        return;
+    }
+
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
+    let path = PathBuf::from(home).join("work/bin/cleared.mp3");
+    if !path.is_file() {
+        return;
+    }
+
+    let _ = Command::new("mpg123")
+        .arg("-f")
+        .arg("16000")
+        .arg("-q")
+        .arg(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
 }
 
 impl ChatWidget {
@@ -1663,6 +1689,7 @@ impl ChatWidget {
                     .map(super::status_indicator_widget::StatusIndicatorWidget::elapsed_seconds)
                     .map(|current| self.worked_elapsed_from(current));
                 self.add_to_history(history_cell::FinalMessageSeparator::new(elapsed_seconds));
+                play_cleared_sound();
                 self.needs_final_message_separator = false;
                 self.had_work_activity = false;
             } else if self.needs_final_message_separator {
