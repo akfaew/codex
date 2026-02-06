@@ -4536,62 +4536,64 @@ pub(crate) async fn run_turn(
 
                 if !needs_follow_up {
                     last_agent_message = sampling_request_last_agent_message;
-                    let hook_outcomes = sess
-                        .hooks()
-                        .dispatch(HookPayload {
-                            session_id: sess.conversation_id,
-                            cwd: turn_context.cwd.clone(),
-                            triggered_at: chrono::Utc::now(),
-                            hook_event: HookEvent::AfterAgent {
-                                event: HookEventAfterAgent {
-                                    thread_id: sess.conversation_id,
-                                    turn_id: turn_context.sub_id.clone(),
-                                    input_messages: sampling_request_input_messages,
-                                    last_assistant_message: last_agent_message.clone(),
+                    if should_dispatch_after_agent_hook(&turn_context.session_source) {
+                        let hook_outcomes = sess
+                            .hooks()
+                            .dispatch(HookPayload {
+                                session_id: sess.conversation_id,
+                                cwd: turn_context.cwd.clone(),
+                                triggered_at: chrono::Utc::now(),
+                                hook_event: HookEvent::AfterAgent {
+                                    event: HookEventAfterAgent {
+                                        thread_id: sess.conversation_id,
+                                        turn_id: turn_context.sub_id.clone(),
+                                        input_messages: sampling_request_input_messages,
+                                        last_assistant_message: last_agent_message.clone(),
+                                    },
                                 },
-                            },
-                        })
-                        .await;
+                            })
+                            .await;
 
-                    let mut abort_message = None;
-                    for hook_outcome in hook_outcomes {
-                        let hook_name = hook_outcome.hook_name;
-                        match hook_outcome.result {
-                            HookResult::Success => {}
-                            HookResult::FailedContinue(error) => {
-                                warn!(
-                                    turn_id = %turn_context.sub_id,
-                                    hook_name = %hook_name,
-                                    error = %error,
-                                    "after_agent hook failed; continuing"
-                                );
-                            }
-                            HookResult::FailedAbort(error) => {
-                                let message = format!(
-                                    "after_agent hook '{hook_name}' failed and aborted turn completion: {error}"
-                                );
-                                warn!(
-                                    turn_id = %turn_context.sub_id,
-                                    hook_name = %hook_name,
-                                    error = %error,
-                                    "after_agent hook failed; aborting operation"
-                                );
-                                if abort_message.is_none() {
-                                    abort_message = Some(message);
+                        let mut abort_message = None;
+                        for hook_outcome in hook_outcomes {
+                            let hook_name = hook_outcome.hook_name;
+                            match hook_outcome.result {
+                                HookResult::Success => {}
+                                HookResult::FailedContinue(error) => {
+                                    warn!(
+                                        turn_id = %turn_context.sub_id,
+                                        hook_name = %hook_name,
+                                        error = %error,
+                                        "after_agent hook failed; continuing"
+                                    );
+                                }
+                                HookResult::FailedAbort(error) => {
+                                    let message = format!(
+                                        "after_agent hook '{hook_name}' failed and aborted turn completion: {error}"
+                                    );
+                                    warn!(
+                                        turn_id = %turn_context.sub_id,
+                                        hook_name = %hook_name,
+                                        error = %error,
+                                        "after_agent hook failed; aborting operation"
+                                    );
+                                    if abort_message.is_none() {
+                                        abort_message = Some(message);
+                                    }
                                 }
                             }
                         }
-                    }
-                    if let Some(message) = abort_message {
-                        sess.send_event(
-                            &turn_context,
-                            EventMsg::Error(ErrorEvent {
-                                message,
-                                codex_error_info: None,
-                            }),
-                        )
-                        .await;
-                        return None;
+                        if let Some(message) = abort_message {
+                            sess.send_event(
+                                &turn_context,
+                                EventMsg::Error(ErrorEvent {
+                                    message,
+                                    codex_error_info: None,
+                                }),
+                            )
+                            .await;
+                            return None;
+                        }
                     }
                     break;
                 }
@@ -4750,6 +4752,10 @@ fn collect_explicit_app_ids_from_skill_items(
     }
 
     connector_ids
+}
+
+fn should_dispatch_after_agent_hook(session_source: &SessionSource) -> bool {
+    !matches!(session_source, SessionSource::SubAgent(_))
 }
 
 fn filter_connectors_for_input(
@@ -5931,6 +5937,31 @@ mod tests {
             call_id: call_id.to_string(),
             output: FunctionCallOutputPayload::from_text(output.to_string()),
         })
+    }
+
+    #[test]
+    fn after_agent_hook_dispatches_for_top_level_sessions() {
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Cli));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::VSCode));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Exec));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Mcp));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Unknown));
+    }
+
+    #[test]
+    fn after_agent_hook_does_not_dispatch_for_subagent_sessions() {
+        assert!(!should_dispatch_after_agent_hook(&SessionSource::SubAgent(
+            SubAgentSource::Review
+        )));
+        assert!(!should_dispatch_after_agent_hook(&SessionSource::SubAgent(
+            SubAgentSource::Compact
+        )));
+        assert!(!should_dispatch_after_agent_hook(&SessionSource::SubAgent(
+            SubAgentSource::ThreadSpawn {
+                parent_thread_id: ThreadId::new(),
+                depth: 1,
+            }
+        )));
     }
 
     #[tokio::test]

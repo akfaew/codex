@@ -568,6 +568,9 @@ pub(crate) struct ChatWidget {
     queued_user_messages: VecDeque<UserMessage>,
     // Pending notification to show when unfocused on next Draw
     pending_notification: Option<Notification>,
+    // True when the currently running turn was initiated by local user input
+    // and should emit a completion notification.
+    notify_on_turn_complete: bool,
     /// When `Some`, the user has pressed a quit shortcut and the second press
     /// must occur before `quit_shortcut_expires_at`.
     quit_shortcut_expires_at: Option<Instant>,
@@ -1391,12 +1394,22 @@ impl ChatWidget {
         if !from_replay {
             self.saw_plan_item_this_turn = false;
         }
+        let should_notify = !from_replay && self.notify_on_turn_complete;
+        if !from_replay {
+            // The current turn has ended; a queued message (if any) may arm
+            // notifications again for the next user-initiated turn.
+            self.notify_on_turn_complete = false;
+        }
         // If there is a queued user message, send exactly one now to begin the next turn.
         self.maybe_send_next_queued_input();
-        // Emit a notification when the turn completes (suppressed if focused).
-        self.notify(Notification::AgentTurnComplete {
-            response: last_agent_message.unwrap_or_default(),
-        });
+        // Replayed completion events should not produce user-facing side effects.
+        if should_notify {
+            play_cleared_sound();
+            // Emit a notification when the turn completes (suppressed if focused).
+            self.notify(Notification::AgentTurnComplete {
+                response: last_agent_message.unwrap_or_default(),
+            });
+        }
 
         self.maybe_show_pending_rate_limit_prompt();
     }
@@ -1622,6 +1635,7 @@ impl ChatWidget {
         self.stream_controller = None;
         self.plan_stream_controller = None;
         self.pending_status_indicator_restore = false;
+        self.notify_on_turn_complete = false;
         self.request_status_line_branch_refresh();
         self.maybe_show_pending_rate_limit_prompt();
     }
@@ -2310,7 +2324,6 @@ impl ChatWidget {
                     elapsed_seconds,
                     None,
                 ));
-                play_cleared_sound();
                 self.needs_final_message_separator = false;
                 self.had_work_activity = false;
             } else if self.needs_final_message_separator {
@@ -2690,6 +2703,7 @@ impl ChatWidget {
             show_welcome_banner: is_first_run,
             suppress_session_configured_redraw: false,
             pending_notification: None,
+            notify_on_turn_complete: false,
             quit_shortcut_expires_at: None,
             quit_shortcut_key: None,
             is_review_mode: false,
@@ -2858,6 +2872,7 @@ impl ChatWidget {
             show_welcome_banner: is_first_run,
             suppress_session_configured_redraw: false,
             pending_notification: None,
+            notify_on_turn_complete: false,
             quit_shortcut_expires_at: None,
             quit_shortcut_key: None,
             is_review_mode: false,
@@ -3004,6 +3019,7 @@ impl ChatWidget {
             show_welcome_banner: false,
             suppress_session_configured_redraw: true,
             pending_notification: None,
+            notify_on_turn_complete: false,
             quit_shortcut_expires_at: None,
             quit_shortcut_key: None,
             is_review_mode: false,
@@ -3754,6 +3770,7 @@ impl ChatWidget {
                 )));
                 return;
             }
+            self.notify_on_turn_complete = true;
             self.submit_op(Op::RunUserShellCommand {
                 command: cmd.to_string(),
             });
@@ -3883,6 +3900,7 @@ impl ChatWidget {
             collaboration_mode,
             personality,
         };
+        self.notify_on_turn_complete = true;
 
         self.codex_op_tx.send(op).unwrap_or_else(|e| {
             tracing::error!("failed to send message: {e}");

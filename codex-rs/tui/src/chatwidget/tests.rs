@@ -1642,6 +1642,7 @@ async fn make_chatwidget_manual(
         queued_user_messages: VecDeque::new(),
         suppress_session_configured_redraw: false,
         pending_notification: None,
+        notify_on_turn_complete: false,
         quit_shortcut_expires_at: None,
         quit_shortcut_key: None,
         is_review_mode: false,
@@ -2284,6 +2285,55 @@ async fn plan_implementation_popup_skips_replayed_turn_complete() {
     assert!(
         !popup.contains(PLAN_IMPLEMENTATION_TITLE),
         "expected no plan popup for replayed turn, got {popup:?}"
+    );
+}
+
+#[tokio::test]
+async fn replayed_turn_complete_does_not_queue_notification() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+
+    chat.replay_initial_messages(vec![EventMsg::TurnComplete(TurnCompleteEvent {
+        last_agent_message: Some("Plan details".to_string()),
+    })]);
+
+    assert!(
+        chat.pending_notification.is_none(),
+        "expected no notification for replayed turn completion"
+    );
+}
+
+#[tokio::test]
+async fn live_turn_complete_queues_notification() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+    chat.notify_on_turn_complete = true;
+
+    chat.handle_codex_event(Event {
+        id: "live-turn-complete".to_string(),
+        msg: EventMsg::TurnComplete(TurnCompleteEvent {
+            last_agent_message: Some("Plan details".to_string()),
+        }),
+    });
+
+    assert_matches!(
+        chat.pending_notification,
+        Some(Notification::AgentTurnComplete { .. })
+    );
+}
+
+#[tokio::test]
+async fn system_turn_complete_does_not_queue_notification() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+
+    chat.handle_codex_event(Event {
+        id: "system-turn-complete".to_string(),
+        msg: EventMsg::TurnComplete(TurnCompleteEvent {
+            last_agent_message: Some("Plan details".to_string()),
+        }),
+    });
+
+    assert!(
+        chat.pending_notification.is_none(),
+        "expected no notification for non-user-initiated turn completion"
     );
 }
 
