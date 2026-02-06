@@ -3824,21 +3824,23 @@ pub(crate) async fn run_turn(
 
                 if !needs_follow_up {
                     last_agent_message = sampling_request_last_agent_message;
-                    sess.hooks()
-                        .dispatch(crate::hooks::HookPayload {
-                            session_id: sess.conversation_id,
-                            cwd: turn_context.cwd.clone(),
-                            triggered_at: chrono::Utc::now(),
-                            hook_event: HookEvent::AfterAgent {
-                                event: HookEventAfterAgent {
-                                    thread_id: sess.conversation_id,
-                                    turn_id: turn_context.sub_id.clone(),
-                                    input_messages: sampling_request_input_messages,
-                                    last_assistant_message: last_agent_message.clone(),
+                    if should_dispatch_after_agent_hook(&turn_context.session_source) {
+                        sess.hooks()
+                            .dispatch(crate::hooks::HookPayload {
+                                session_id: sess.conversation_id,
+                                cwd: turn_context.cwd.clone(),
+                                triggered_at: chrono::Utc::now(),
+                                hook_event: HookEvent::AfterAgent {
+                                    event: HookEventAfterAgent {
+                                        thread_id: sess.conversation_id,
+                                        turn_id: turn_context.sub_id.clone(),
+                                        input_messages: sampling_request_input_messages,
+                                        last_assistant_message: last_agent_message.clone(),
+                                    },
                                 },
-                            },
-                        })
-                        .await;
+                            })
+                            .await;
+                    }
                     break;
                 }
                 continue;
@@ -3882,6 +3884,10 @@ async fn run_auto_compact(sess: &Arc<Session>, turn_context: &Arc<TurnContext>) 
     } else {
         run_inline_auto_compact_task(Arc::clone(sess), Arc::clone(turn_context)).await;
     }
+}
+
+fn should_dispatch_after_agent_hook(session_source: &SessionSource) -> bool {
+    !matches!(session_source, SessionSource::SubAgent(_))
 }
 
 fn filter_connectors_for_input(
@@ -4929,6 +4935,31 @@ mod tests {
             install_url: None,
             is_accessible: true,
         }
+    }
+
+    #[test]
+    fn after_agent_hook_dispatches_for_top_level_sessions() {
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Cli));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::VSCode));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Exec));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Mcp));
+        assert!(should_dispatch_after_agent_hook(&SessionSource::Unknown));
+    }
+
+    #[test]
+    fn after_agent_hook_does_not_dispatch_for_subagent_sessions() {
+        assert!(!should_dispatch_after_agent_hook(&SessionSource::SubAgent(
+            SubAgentSource::Review
+        )));
+        assert!(!should_dispatch_after_agent_hook(&SessionSource::SubAgent(
+            SubAgentSource::Compact
+        )));
+        assert!(!should_dispatch_after_agent_hook(&SessionSource::SubAgent(
+            SubAgentSource::ThreadSpawn {
+                parent_thread_id: ThreadId::new(),
+                depth: 1,
+            }
+        )));
     }
 
     #[tokio::test]
