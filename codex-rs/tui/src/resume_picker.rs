@@ -1055,7 +1055,12 @@ impl PickerState {
         let allow_plain_char_navigation = !is_plain_text_key_event(key);
         match key {
             KeyEvent {
-                code: KeyCode::Char('c'),
+                code: KeyCode::Char('c') | KeyCode::Char('C'),
+                modifiers,
+                ..
+            } if modifiers.contains(KeyModifiers::CONTROL) => return Ok(None),
+            KeyEvent {
+                code: KeyCode::Char('d') | KeyCode::Char('D'),
                 modifiers,
                 ..
             } if modifiers.contains(KeyModifiers::CONTROL) => {

@@ -175,7 +175,6 @@ use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
 use crossterm::event::KeyModifiers;
-use rand::Rng;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
@@ -627,8 +626,6 @@ pub(crate) struct ChatWidget {
     thread_name: Option<String>,
     thread_rename_block_message: Option<String>,
     active_side_conversation: bool,
-    normal_placeholder_text: String,
-    side_placeholder_text: String,
     forked_from: Option<ThreadId>,
     interrupted_turn_notice_mode: InterruptedTurnNoticeMode,
     frame_requester: FrameRequester,
@@ -1976,23 +1973,6 @@ impl Drop for ChatWidget {
         self.stop_rate_limit_poller();
     }
 }
-
-const PLACEHOLDERS: [&str; 8] = [
-    "Explain this codebase",
-    "Summarize recent commits",
-    "Implement {feature}",
-    "Find and fix a bug in @filename",
-    "Write tests for @filename",
-    "Improve documentation in @filename",
-    "Run /review on my current changes",
-    "Use /skills to list available skills",
-];
-
-const SIDE_PLACEHOLDERS: [&str; 3] = [
-    "Check recently modified functions for compatibility",
-    "How many files have been modified?",
-    "Will this algorithm scale well?",
-];
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.
 // Returns the inner text if found; otherwise `None`.

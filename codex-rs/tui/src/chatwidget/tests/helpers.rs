@@ -182,12 +182,7 @@ pub(super) async fn make_chatwidget_manual(
     let mut widget = ChatWidget::new_with_op_target(common, super::CodexOpTarget::Direct(op_tx));
     widget.transcript.active_cell = None;
     widget.transcript.active_cell_revision = 0;
-    widget.normal_placeholder_text = "Ask Codex to do anything".to_string();
-    widget.side_placeholder_text =
-        "Check recently modified functions for compatibility".to_string();
-    widget
-        .bottom_pane
-        .set_placeholder_text(widget.normal_placeholder_text.clone());
+    widget.bottom_pane.set_placeholder_text("".to_string());
     widget.set_model(&resolved_model);
     (widget, rx, op_rx)
 }

@@ -9,7 +9,7 @@
 //! widget (`ChatWidget`). This split matters for Ctrl+C/Ctrl+D: the bottom pane gives the active
 //! view the first chance to consume Ctrl+C (typically to dismiss itself), then lets an active
 //! composer history search consume Ctrl+C as cancellation, and `ChatWidget` may treat an unhandled
-//! Ctrl+C as an interrupt or as the first press of a double-press quit shortcut.
+//! Ctrl+C as an interrupt while Ctrl+D handles the double-press quit shortcut.
 //!
 //! Some UI is time-based rather than input-based, such as the transient "press again to quit"
 //! hint. The pane schedules redraws so those hints can expire even when the UI is otherwise idle.
@@ -156,12 +156,12 @@ pub(crate) use selection_tabs::SelectionTab;
 /// - `ChatWidget`: arming the double-press quit shortcut.
 /// - `BottomPane`/`ChatComposer`: rendering and expiring the footer hint.
 ///
-/// Keeping a single value ensures Ctrl+C and Ctrl+D behave identically.
+/// Keeping a single value ensures quit shortcut behavior stays consistent.
 pub(crate) const QUIT_SHORTCUT_TIMEOUT: Duration = Duration::from_secs(1);
 
 const APPROVAL_PROMPT_TYPING_IDLE_DELAY: Duration = Duration::from_secs(1);
 
-/// Whether Ctrl+C/Ctrl+D require a second press to quit.
+/// Whether Ctrl+D requires a second press to quit.
 ///
 /// This UX experiment was enabled by default, but requiring a double press to quit feels janky in
 /// practice (especially for users accustomed to shells and other TUIs). Disable it for now while we
@@ -674,8 +674,7 @@ impl BottomPane {
     /// itself). If no view is active, Ctrl+C cancels active history search before falling back to
     /// clearing draft composer input.
     ///
-    /// This method may show the quit shortcut hint as a user-visible acknowledgement that Ctrl+C
-    /// was received, but it does not decide whether the process should exit; `ChatWidget` owns the
+    /// This method does not decide whether the process should exit; `ChatWidget` owns the
     /// quit/interrupt state machine and uses the result to decide what happens next.
     pub(crate) fn on_ctrl_c(&mut self) -> CancellationEvent {
         if let Some(view) = self.view_stack.last_mut() {
@@ -686,7 +685,6 @@ impl BottomPane {
                 if view_complete {
                     self.pop_active_view_with_completion(completion);
                 }
-                self.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')));
                 self.request_redraw();
             }
             event
@@ -698,8 +696,6 @@ impl BottomPane {
         } else {
             self.view_stack.pop();
             self.clear_composer_for_ctrl_c();
-            self.show_quit_shortcut_hint(key_hint::ctrl(KeyCode::Char('c')));
-            self.request_redraw();
             CancellationEvent::Handled
         }
     }
@@ -1839,7 +1835,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -1939,7 +1935,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: true,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -1959,7 +1955,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: true,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -1987,7 +1983,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2237,7 +2233,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2277,14 +2273,14 @@ mod tests {
             "expected Working header after denial on row 0: {row0:?}"
         );
 
-        // Composer placeholder should be visible somewhere below.
+        // Composer prompt should be visible somewhere below.
         let mut found_composer = false;
         for y in 1..area.height {
             let mut row = String::new();
             for x in 0..area.width {
                 row.push(buf[(x, y)].symbol().chars().next().unwrap_or(' '));
             }
-            if row.contains("Ask Codex") {
+            if row.contains('›') {
                 found_composer = true;
                 break;
             }
@@ -2304,7 +2300,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2331,7 +2327,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2362,7 +2358,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2385,7 +2381,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2414,7 +2410,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2451,7 +2447,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2483,7 +2479,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2514,7 +2510,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2543,7 +2539,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2566,7 +2562,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(vec![SkillMetadata {
@@ -2614,7 +2610,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2649,7 +2645,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2685,7 +2681,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2733,7 +2729,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2844,7 +2840,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2892,7 +2888,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
@@ -2970,7 +2966,7 @@ mod tests {
             frame_requester: FrameRequester::test_dummy(),
             has_input_focus: true,
             enhanced_keys_supported: false,
-            placeholder_text: "Ask Codex to do anything".to_string(),
+            placeholder_text: "".to_string(),
             disable_paste_burst: false,
             animations_enabled: true,
             skills: Some(Vec::new()),
