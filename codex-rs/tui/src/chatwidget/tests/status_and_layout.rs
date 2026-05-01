@@ -2716,7 +2716,7 @@ async fn chatwidget_exec_and_status_layout_vt100_snapshot() {
     handle_turn_started(&mut chat, "turn-1");
     handle_agent_reasoning_delta(&mut chat, "**Investigating rendering code**");
     chat.bottom_pane.set_composer_text(
-        "Summarize recent commits".to_string(),
+        "Inspect rendering output".to_string(),
         Vec::new(),
         Vec::new(),
     );

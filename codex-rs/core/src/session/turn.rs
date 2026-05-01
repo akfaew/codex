@@ -92,6 +92,7 @@ use codex_protocol::protocol::EventMsg;
 use codex_protocol::protocol::PlanDeltaEvent;
 use codex_protocol::protocol::ReasoningContentDeltaEvent;
 use codex_protocol::protocol::ReasoningRawContentDeltaEvent;
+use codex_protocol::protocol::SessionSource;
 use codex_protocol::protocol::TurnDiffEvent;
 use codex_protocol::protocol::WarningEvent;
 use codex_protocol::user_input::UserInput;
@@ -558,63 +559,65 @@ pub(crate) async fn run_turn(
                     if stop_outcome.should_stop {
                         break;
                     }
-                    let hook_outcomes = sess
-                        .hooks()
-                        .dispatch(HookPayload {
-                            session_id: sess.conversation_id,
-                            cwd: turn_context.cwd.clone(),
-                            client: turn_context.app_server_client_name.clone(),
-                            triggered_at: chrono::Utc::now(),
-                            hook_event: HookEvent::AfterAgent {
-                                event: HookEventAfterAgent {
-                                    thread_id: sess.conversation_id,
-                                    turn_id: turn_context.sub_id.clone(),
-                                    input_messages: sampling_request_input_messages,
-                                    last_assistant_message: last_agent_message.clone(),
+                    if should_dispatch_after_agent_hook(&turn_context.session_source) {
+                        let hook_outcomes = sess
+                            .hooks()
+                            .dispatch(HookPayload {
+                                session_id: sess.conversation_id,
+                                cwd: turn_context.cwd.clone(),
+                                client: turn_context.app_server_client_name.clone(),
+                                triggered_at: chrono::Utc::now(),
+                                hook_event: HookEvent::AfterAgent {
+                                    event: HookEventAfterAgent {
+                                        thread_id: sess.conversation_id,
+                                        turn_id: turn_context.sub_id.clone(),
+                                        input_messages: sampling_request_input_messages,
+                                        last_assistant_message: last_agent_message.clone(),
+                                    },
                                 },
-                            },
-                        })
-                        .await;
+                            })
+                            .await;
 
-                    let mut abort_message = None;
-                    for hook_outcome in hook_outcomes {
-                        let hook_name = hook_outcome.hook_name;
-                        match hook_outcome.result {
-                            HookResult::Success => {}
-                            HookResult::FailedContinue(error) => {
-                                warn!(
-                                    turn_id = %turn_context.sub_id,
-                                    hook_name = %hook_name,
-                                    error = %error,
-                                    "after_agent hook failed; continuing"
-                                );
-                            }
-                            HookResult::FailedAbort(error) => {
-                                let message = format!(
-                                    "after_agent hook '{hook_name}' failed and aborted turn completion: {error}"
-                                );
-                                warn!(
-                                    turn_id = %turn_context.sub_id,
-                                    hook_name = %hook_name,
-                                    error = %error,
-                                    "after_agent hook failed; aborting operation"
-                                );
-                                if abort_message.is_none() {
-                                    abort_message = Some(message);
+                        let mut abort_message = None;
+                        for hook_outcome in hook_outcomes {
+                            let hook_name = hook_outcome.hook_name;
+                            match hook_outcome.result {
+                                HookResult::Success => {}
+                                HookResult::FailedContinue(error) => {
+                                    warn!(
+                                        turn_id = %turn_context.sub_id,
+                                        hook_name = %hook_name,
+                                        error = %error,
+                                        "after_agent hook failed; continuing"
+                                    );
+                                }
+                                HookResult::FailedAbort(error) => {
+                                    let message = format!(
+                                        "after_agent hook '{hook_name}' failed and aborted turn completion: {error}"
+                                    );
+                                    warn!(
+                                        turn_id = %turn_context.sub_id,
+                                        hook_name = %hook_name,
+                                        error = %error,
+                                        "after_agent hook failed; aborting operation"
+                                    );
+                                    if abort_message.is_none() {
+                                        abort_message = Some(message);
+                                    }
                                 }
                             }
                         }
-                    }
-                    if let Some(message) = abort_message {
-                        sess.send_event(
-                            &turn_context,
-                            EventMsg::Error(ErrorEvent {
-                                message,
-                                codex_error_info: None,
-                            }),
-                        )
-                        .await;
-                        return None;
+                        if let Some(message) = abort_message {
+                            sess.send_event(
+                                &turn_context,
+                                EventMsg::Error(ErrorEvent {
+                                    message,
+                                    codex_error_info: None,
+                                }),
+                            )
+                            .await;
+                            return None;
+                        }
                     }
                     break;
                 }
@@ -804,6 +807,10 @@ async fn run_auto_compact(
         .await?;
     }
     Ok(())
+}
+
+fn should_dispatch_after_agent_hook(session_source: &SessionSource) -> bool {
+    !matches!(session_source, SessionSource::SubAgent(_))
 }
 
 pub(super) fn collect_explicit_app_ids_from_skill_items(

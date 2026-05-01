@@ -509,7 +509,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -545,7 +545,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -580,7 +580,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -606,25 +606,25 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
-        composer.history.record_local_submission(HistoryEntry::new(
-            "Find and fix a bug in @filename".to_string(),
-        ));
+        composer
+            .history
+            .record_local_submission(HistoryEntry::new("Investigate the parser bug".to_string()));
         composer.set_text_content("draft".to_string(), Vec::new(), Vec::new());
 
         let _ = composer.handle_key_event(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL));
         for ch in ['b', 'u', 'g'] {
             let _ = composer.handle_key_event(KeyEvent::new(KeyCode::Char(ch), KeyModifiers::NONE));
         }
-        assert_eq!(composer.textarea.text(), "Find and fix a bug in @filename");
+        assert_eq!(composer.textarea.text(), "Investigate the parser bug");
 
         for _ in 0..3 {
             let _ =
                 composer.handle_key_event(KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL));
         }
-        assert_eq!(composer.textarea.text(), "Find and fix a bug in @filename");
+        assert_eq!(composer.textarea.text(), "Investigate the parser bug");
         assert!(
             composer
                 .history_search
@@ -635,7 +635,7 @@ mod tests {
         for _ in 0..3 {
             let _ = composer.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
         }
-        assert_eq!(composer.textarea.text(), "Find and fix a bug in @filename");
+        assert_eq!(composer.textarea.text(), "Investigate the parser bug");
         assert!(
             composer
                 .history_search
@@ -652,7 +652,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ true,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -713,7 +713,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ true,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -769,7 +769,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -798,7 +798,7 @@ mod tests {
                 /*has_input_focus*/ true,
                 sender,
                 /*enhanced_keys_supported*/ false,
-                "Ask Codex to do anything".to_string(),
+                "".to_string(),
                 /*disable_paste_burst*/ false,
             );
             composer
@@ -837,7 +837,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
 
@@ -868,7 +868,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
 
@@ -903,7 +903,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer
@@ -936,7 +936,7 @@ mod tests {
             /*has_input_focus*/ true,
             sender,
             /*enhanced_keys_supported*/ false,
-            "Ask Codex to do anything".to_string(),
+            "".to_string(),
             /*disable_paste_burst*/ false,
         );
         composer

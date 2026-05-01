@@ -830,6 +830,66 @@ async fn plan_implementation_popup_skips_replayed_turn_complete() {
 }
 
 #[tokio::test]
+async fn replayed_turn_complete_does_not_queue_notification() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+
+    chat.handle_server_notification(
+        ServerNotification::TurnCompleted(TurnCompletedNotification {
+            thread_id: chat.thread_id.map(|id| id.to_string()).unwrap_or_default(),
+            turn: app_server_turn(
+                "turn-1",
+                AppServerTurnStatus::Completed,
+                /*duration_ms*/ None,
+                /*error*/ None,
+            ),
+        }),
+        Some(ReplayKind::ResumeInitialMessages),
+    );
+
+    assert!(
+        chat.pending_notification.is_none(),
+        "expected no notification for replayed turn completion"
+    );
+}
+
+#[tokio::test]
+async fn live_turn_complete_queues_notification() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+    chat.notify_on_turn_complete = true;
+
+    complete_assistant_message(
+        &mut chat,
+        "turn-1-message",
+        "Plan details",
+        Some(MessagePhase::FinalAnswer),
+    );
+    handle_turn_completed(&mut chat, "turn-1", /*duration_ms*/ None);
+
+    assert_matches!(
+        chat.pending_notification,
+        Some(Notification::AgentTurnComplete { .. })
+    );
+}
+
+#[tokio::test]
+async fn system_turn_complete_does_not_queue_notification() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
+
+    complete_assistant_message(
+        &mut chat,
+        "turn-1-message",
+        "Plan details",
+        Some(MessagePhase::FinalAnswer),
+    );
+    handle_turn_completed(&mut chat, "turn-1", /*duration_ms*/ None);
+
+    assert!(
+        chat.pending_notification.is_none(),
+        "expected no notification for non-user-initiated turn completion"
+    );
+}
+
+#[tokio::test]
 async fn plan_implementation_popup_shows_once_when_replay_precedes_live_turn_complete() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual(Some("gpt-5")).await;
     chat.set_feature_enabled(Feature::CollaborationModes, /*enabled*/ true);

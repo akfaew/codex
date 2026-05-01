@@ -546,7 +546,14 @@ impl PickerState {
                 code: KeyCode::Esc, ..
             } => return Ok(Some(SessionSelection::StartFresh)),
             KeyEvent {
-                code: KeyCode::Char('c'),
+                code: KeyCode::Char('c') | KeyCode::Char('C'),
+                modifiers,
+                ..
+            } if modifiers.contains(KeyModifiers::CONTROL) => {
+                return Ok(None);
+            }
+            KeyEvent {
+                code: KeyCode::Char('d') | KeyCode::Char('D'),
                 modifiers,
                 ..
             } if modifiers.contains(KeyModifiers::CONTROL) => {
@@ -1078,7 +1085,7 @@ fn draw_picker(tui: &mut Tui, state: &PickerState) -> std::io::Result<()> {
             key_hint::plain(KeyCode::Esc).into(),
             " to start new ".dim(),
             "    ".dim(),
-            key_hint::ctrl(KeyCode::Char('c')).into(),
+            key_hint::ctrl(KeyCode::Char('d')).into(),
             " to quit ".dim(),
             "    ".dim(),
             key_hint::plain(KeyCode::Tab).into(),

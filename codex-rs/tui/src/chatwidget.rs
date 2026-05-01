@@ -36,6 +36,8 @@ use std::collections::VecDeque;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
+use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -174,7 +176,6 @@ use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
 use crossterm::event::KeyModifiers;
-use rand::Rng;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::Color;
@@ -878,8 +879,6 @@ pub(crate) struct ChatWidget {
     thread_name: Option<String>,
     thread_rename_block_message: Option<String>,
     active_side_conversation: bool,
-    normal_placeholder_text: String,
-    side_placeholder_text: String,
     forked_from: Option<ThreadId>,
     interrupted_turn_notice_mode: InterruptedTurnNoticeMode,
     frame_requester: FrameRequester,
@@ -926,6 +925,9 @@ pub(crate) struct ChatWidget {
     queued_message_edit_hint_binding: Option<KeyBinding>,
     // Pending notification to show when unfocused on next Draw
     pending_notification: Option<Notification>,
+    // True when the currently running turn was initiated by local user input
+    // and should emit a completion notification.
+    notify_on_turn_complete: bool,
     /// When `Some`, the user has pressed a quit shortcut and the second press
     /// must occur before `quit_shortcut_expires_at`.
     quit_shortcut_expires_at: Option<Instant>,
@@ -1567,6 +1569,30 @@ impl ThreadItemRenderSource {
             Self::Replay(replay_kind) => Some(replay_kind),
         }
     }
+}
+
+fn play_cleared_sound() {
+    if cfg!(test) {
+        return;
+    }
+
+    let Some(home) = std::env::var_os("HOME") else {
+        return;
+    };
+    let path = PathBuf::from(home).join("work/bin/cleared.mp3");
+    if !path.is_file() {
+        return;
+    }
+
+    let _ = Command::new("mpg123")
+        .arg("-f")
+        .arg("16000")
+        .arg("-q")
+        .arg(path)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
 }
 
 fn exec_approval_request_from_params(
@@ -2521,6 +2547,12 @@ impl ChatWidget {
         if !from_replay {
             self.saw_plan_item_this_turn = false;
         }
+        let should_notify = !from_replay && self.notify_on_turn_complete;
+        if !from_replay {
+            // The current turn has ended; a queued message (if any) may arm
+            // notifications again for the next user-initiated turn.
+            self.notify_on_turn_complete = false;
+        }
         // If there is a queued user message, send exactly one now to begin the next turn.
         let follow_up_started = self.maybe_send_next_queued_input();
         let active_goal_continuing = self
@@ -2531,7 +2563,8 @@ impl ChatWidget {
         // Queued follow-up input and active goal continuation both start the
         // next turn immediately, so notifying at that boundary would feel like
         // a false "needs attention".
-        if !follow_up_started && !active_goal_continuing {
+        if should_notify && !follow_up_started && !active_goal_continuing {
+            play_cleared_sound();
             self.notify(Notification::AgentTurnComplete {
                 response: notification_response,
             });
@@ -2949,6 +2982,7 @@ impl ChatWidget {
         self.stream_controller = None;
         self.plan_stream_controller = None;
         self.pending_status_indicator_restore = false;
+        self.notify_on_turn_complete = false;
         self.request_status_line_branch_refresh();
         self.maybe_show_pending_rate_limit_prompt();
     }
@@ -4769,11 +4803,6 @@ impl ChatWidget {
         let mut config = config;
         config.model = model.clone();
         let prevent_idle_sleep = config.features.enabled(Feature::PreventIdleSleep);
-        let mut rng = rand::rng();
-        let placeholder = PLACEHOLDERS[rng.random_range(0..PLACEHOLDERS.len())].to_string();
-        let side_placeholder =
-            SIDE_PLACEHOLDERS[rng.random_range(0..SIDE_PLACEHOLDERS.len())].to_string();
-
         let model_override = model.as_deref();
         let model_for_header = model
             .clone()
@@ -4823,7 +4852,7 @@ impl ChatWidget {
                 app_event_tx,
                 has_input_focus: true,
                 enhanced_keys_supported,
-                placeholder_text: placeholder.clone(),
+                placeholder_text: "".to_string(),
                 disable_paste_burst: config.disable_paste_burst,
                 animations_enabled: config.animations,
                 skills: None,
@@ -4907,8 +4936,6 @@ impl ChatWidget {
             thread_name: None,
             thread_rename_block_message: None,
             active_side_conversation: false,
-            normal_placeholder_text: placeholder,
-            side_placeholder_text: side_placeholder,
             forked_from: None,
             interrupted_turn_notice_mode: InterruptedTurnNoticeMode::Default,
             queued_user_messages: VecDeque::new(),
@@ -4925,6 +4952,7 @@ impl ChatWidget {
             suppress_session_configured_redraw: false,
             suppress_initial_user_message_submit: false,
             pending_notification: None,
+            notify_on_turn_complete: false,
             quit_shortcut_expires_at: None,
             quit_shortcut_key: None,
             is_review_mode: false,
@@ -5480,7 +5508,9 @@ impl ChatWidget {
             )));
             QueueDrain::Continue
         } else {
-            self.submit_op(AppCommand::run_user_shell_command(cmd.to_string()));
+            if self.submit_op(AppCommand::run_user_shell_command(cmd.to_string())) {
+                self.notify_on_turn_complete = true;
+            }
             QueueDrain::Stop
         }
     }
@@ -5798,6 +5828,7 @@ impl ChatWidget {
         if render_in_history {
             self.user_turn_pending_start = true;
         }
+        self.notify_on_turn_complete = true;
 
         // Persist the submitted text to cross-session message history. Mentions are encoded into
         // placeholder syntax so recall can reconstruct the mention bindings in a future session.
@@ -6648,7 +6679,7 @@ impl ChatWidget {
     /// Request a shutdown-first quit.
     ///
     /// This is used for explicit quit commands (`/quit`, `/exit`, `/logout`) and for
-    /// the double-press Ctrl+C/Ctrl+D quit shortcut.
+    /// the double-press Ctrl+D quit shortcut.
     fn request_quit_without_confirmation(&self) {
         self.app_event_tx
             .send(AppEvent::Exit(ExitMode::ShutdownFirst));
@@ -10099,17 +10130,12 @@ impl ChatWidget {
 
     /// Handles a Ctrl+C press at the chat-widget layer.
     ///
-    /// The first press arms a time-bounded quit shortcut and shows a footer hint via the bottom
-    /// pane. If cancellable work is active, Ctrl+C also submits `Op::Interrupt` after the shortcut
-    /// is armed.
+    /// Ctrl+C is reserved for local cancellation (clearing input, dismissing views) and
+    /// interrupting active work; it never quits the app.
     ///
-    /// Active realtime conversations take precedence over bottom-pane Ctrl+C handling so the
-    /// first press always stops live voice, even when the composer contains the recording meter.
-    ///
-    /// When the double-press quit shortcut is enabled, pressing the same shortcut again before
-    /// expiry requests a shutdown-first quit.
+    /// Active realtime conversations take precedence so Ctrl+C stops live voice capture even when
+    /// the composer is showing the recording meter.
     fn on_ctrl_c(&mut self) {
-        let key = key_hint::ctrl(KeyCode::Char('c'));
         if self.realtime_conversation.is_live() {
             self.bottom_pane.clear_quit_shortcut_hint();
             self.quit_shortcut_expires_at = None;
@@ -10117,40 +10143,14 @@ impl ChatWidget {
             self.stop_realtime_conversation_from_ui();
             return;
         }
-        let modal_or_popup_active = !self.bottom_pane.no_modal_or_popup_active();
+
+        self.bottom_pane.clear_quit_shortcut_hint();
+        self.quit_shortcut_expires_at = None;
+        self.quit_shortcut_key = None;
+
         if self.bottom_pane.on_ctrl_c() == CancellationEvent::Handled {
-            if DOUBLE_PRESS_QUIT_SHORTCUT_ENABLED {
-                if modal_or_popup_active {
-                    self.quit_shortcut_expires_at = None;
-                    self.quit_shortcut_key = None;
-                    self.bottom_pane.clear_quit_shortcut_hint();
-                } else {
-                    self.arm_quit_shortcut(key);
-                }
-            }
             return;
         }
-
-        if !DOUBLE_PRESS_QUIT_SHORTCUT_ENABLED {
-            if self.is_cancellable_work_active() {
-                self.quit_shortcut_expires_at = None;
-                self.quit_shortcut_key = None;
-                self.bottom_pane.clear_quit_shortcut_hint();
-                self.submit_op(AppCommand::interrupt());
-            } else {
-                self.request_quit_without_confirmation();
-            }
-            return;
-        }
-
-        if self.quit_shortcut_active_for(key) {
-            self.quit_shortcut_expires_at = None;
-            self.quit_shortcut_key = None;
-            self.request_quit_without_confirmation();
-            return;
-        }
-
-        self.arm_quit_shortcut(key);
 
         if self.is_cancellable_work_active() {
             self.submit_op(AppCommand::interrupt());
@@ -10199,7 +10199,7 @@ impl ChatWidget {
     /// Arm the double-press quit shortcut and show the footer hint.
     ///
     /// This keeps the state machine (`quit_shortcut_*`) in `ChatWidget`, since
-    /// it is the component that interprets Ctrl+C vs Ctrl+D and decides whether
+    /// it is the component that interprets the quit shortcut and decides whether
     /// quitting is currently allowed, while delegating rendering to `BottomPane`.
     fn arm_quit_shortcut(&mut self, key: KeyBinding) {
         self.quit_shortcut_expires_at = Instant::now()
@@ -10209,7 +10209,7 @@ impl ChatWidget {
         self.bottom_pane.show_quit_shortcut_hint(key);
     }
 
-    // Review mode counts as cancellable work so Ctrl+C interrupts instead of quitting.
+    // Review mode counts as cancellable work so Ctrl+C still interrupts.
     fn is_cancellable_work_active(&self) -> bool {
         self.bottom_pane.is_task_running() || self.is_review_mode
     }
@@ -10972,23 +10972,6 @@ impl Notification {
 }
 
 const AGENT_NOTIFICATION_PREVIEW_GRAPHEMES: usize = 200;
-
-const PLACEHOLDERS: [&str; 8] = [
-    "Explain this codebase",
-    "Summarize recent commits",
-    "Implement {feature}",
-    "Find and fix a bug in @filename",
-    "Write tests for @filename",
-    "Improve documentation in @filename",
-    "Run /review on my current changes",
-    "Use /skills to list available skills",
-];
-
-const SIDE_PLACEHOLDERS: [&str; 3] = [
-    "Check recently modified functions for compatibility",
-    "How many files have been modified?",
-    "Will this algorithm scale well?",
-];
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.
 // Returns the inner text if found; otherwise `None`.

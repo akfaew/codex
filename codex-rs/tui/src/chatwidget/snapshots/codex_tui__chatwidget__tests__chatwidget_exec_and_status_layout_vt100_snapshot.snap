@@ -39,6 +39,6 @@ expression: term.backend().vt100().screen().contents()
 • Investigating rendering code (0s • esc to interrupt)
 
 
-› Summarize recent commits
+› Inspect rendering output
 
   tab to queue message                                       100% context left
