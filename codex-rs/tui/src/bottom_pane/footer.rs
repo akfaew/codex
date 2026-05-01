@@ -172,7 +172,7 @@ impl CollaborationModeIndicator {
 pub(crate) enum FooterMode {
     /// Single-line incremental history search prompt shown while Ctrl+R search is active.
     HistorySearch,
-    /// Transient "press again to quit" reminder (Ctrl+C/Ctrl+D).
+    /// Transient "press again to quit" reminder.
     QuitShortcutReminder,
     /// Multi-line shortcut overlay shown after pressing `?`.
     ShortcutOverlay,
@@ -189,10 +189,10 @@ pub(crate) enum FooterMode {
 
 pub(crate) fn toggle_shortcut_mode(
     current: FooterMode,
-    ctrl_c_hint: bool,
+    quit_hint_visible: bool,
     is_empty: bool,
 ) -> FooterMode {
-    if ctrl_c_hint && matches!(current, FooterMode::QuitShortcutReminder) {
+    if quit_hint_visible && matches!(current, FooterMode::QuitShortcutReminder) {
         return current;
     }
 
@@ -1231,7 +1231,7 @@ const SHORTCUTS: &[ShortcutDescriptor] = &[
     ShortcutDescriptor {
         id: ShortcutId::Quit,
         bindings: &[ShortcutBinding {
-            key: key_hint::ctrl(KeyCode::Char('c')),
+            key: key_hint::ctrl(KeyCode::Char('d')),
             condition: DisplayCondition::Always,
         }],
         prefix: "",
@@ -1564,7 +1564,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1582,7 +1582,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints {
@@ -1603,7 +1603,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: true,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1621,7 +1621,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1630,7 +1630,7 @@ mod tests {
         );
 
         snapshot_footer(
-            "footer_ctrl_c_quit_idle",
+            "footer_ctrl_d_quit_idle",
             FooterProps {
                 mode: FooterMode::QuitShortcutReminder,
                 esc_backtrack_hint: false,
@@ -1639,7 +1639,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1648,7 +1648,7 @@ mod tests {
         );
 
         snapshot_footer(
-            "footer_ctrl_c_quit_running",
+            "footer_ctrl_d_quit_running",
             FooterProps {
                 mode: FooterMode::QuitShortcutReminder,
                 esc_backtrack_hint: false,
@@ -1657,7 +1657,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1675,7 +1675,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1693,7 +1693,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1711,7 +1711,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1731,7 +1731,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1751,7 +1751,7 @@ mod tests {
                 queue_submissions: false,
                 collaboration_modes_enabled: false,
                 is_wsl: false,
-                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+                quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
                 status_line_value: None,
                 status_line_enabled: false,
                 key_hints: FooterKeyHints::default_bindings(),
@@ -1767,7 +1767,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: None,
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1796,7 +1796,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: None,
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1818,7 +1818,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: false,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: Some(Line::from("Status line content".to_string())),
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1835,7 +1835,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: false,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: Some(Line::from("Status line content".to_string())),
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1852,7 +1852,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: false,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: Some(Line::from("Status line content".to_string())),
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1869,7 +1869,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: None, // command timed out / empty
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1900,7 +1900,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: None,
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1923,7 +1923,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: false,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: None,
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1947,7 +1947,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: Some(Line::from(
                 "Status line content that should truncate before the mode indicator".to_string(),
             )),
@@ -1972,7 +1972,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: false,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: None,
             status_line_enabled: false,
             key_hints: FooterKeyHints::default_bindings(),
@@ -1989,7 +1989,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: false,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: Some(Line::from("Status line content".to_string())),
             status_line_enabled: true,
             key_hints: FooterKeyHints::default_bindings(),
@@ -2009,7 +2009,7 @@ mod tests {
             queue_submissions: false,
             collaboration_modes_enabled: true,
             is_wsl: false,
-            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('c')),
+            quit_shortcut_key: key_hint::ctrl(KeyCode::Char('d')),
             status_line_value: Some(Line::from(
                 "Status line content that is definitely too long to fit alongside the mode label"
                     .to_string(),

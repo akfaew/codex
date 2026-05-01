@@ -1700,6 +1700,7 @@ async fn slash_copy_state_tracks_turn_complete_final_reply() {
 async fn slash_copy_state_tracks_plan_item_completion() {
     let (mut chat, _rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     let plan_text = "## Plan\n\n1. Build it\n2. Test it".to_string();
+    chat.notify_on_turn_complete = true;
 
     chat.handle_server_notification(
         ServerNotification::ItemCompleted(ItemCompletedNotification {
@@ -1959,6 +1960,7 @@ async fn slash_copy_state_is_preserved_during_running_task() {
 #[tokio::test]
 async fn slash_copy_uses_agent_message_item_when_turn_complete_omits_final_text() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
+    chat.notify_on_turn_complete = true;
 
     handle_turn_started(&mut chat, "turn-1");
     complete_assistant_message(
@@ -1987,6 +1989,7 @@ async fn agent_turn_complete_notification_does_not_reuse_stale_copy_source() {
 
     complete_turn_with_message(&mut chat, "turn-1", Some("Previous reply"));
     chat.pending_notification = None;
+    chat.notify_on_turn_complete = true;
 
     handle_turn_completed(&mut chat, "turn-2", /*duration_ms*/ None);
 
@@ -2043,6 +2046,7 @@ async fn queued_follow_up_suppresses_agent_turn_complete_notification() {
 async fn queued_menu_slash_keeps_agent_turn_complete_notification() {
     let (mut chat, _rx, mut op_rx) = make_chatwidget_manual(Some("gpt-5.2")).await;
     chat.thread_id = Some(ThreadId::new());
+    chat.notify_on_turn_complete = true;
     handle_turn_started(&mut chat, "turn-1");
     queue_composer_text_with_tab(&mut chat, "/model");
 

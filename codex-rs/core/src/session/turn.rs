@@ -102,6 +102,7 @@ use codex_protocol::protocol::PlanDeltaEvent;
 use codex_protocol::protocol::ReasoningContentDeltaEvent;
 use codex_protocol::protocol::ReasoningRawContentDeltaEvent;
 use codex_protocol::protocol::SafetyBufferingEvent;
+use codex_protocol::protocol::SessionSource;
 use codex_protocol::protocol::TurnDiffEvent;
 use codex_protocol::protocol::WarningEvent;
 use codex_protocol::user_input::UserInput;
@@ -401,13 +402,14 @@ pub(crate) async fn run_turn(
                     if stop_outcome.should_stop {
                         break;
                     }
-                    if run_legacy_after_agent_hook(
-                        &sess,
-                        &turn_context,
-                        &sampling_request_input,
-                        last_agent_message.clone(),
-                    )
-                    .await
+                    if !matches!(turn_context.session_source, SessionSource::SubAgent(_))
+                        && run_legacy_after_agent_hook(
+                            &sess,
+                            &turn_context,
+                            &sampling_request_input,
+                            last_agent_message.clone(),
+                        )
+                        .await
                     {
                         return Ok(None);
                     }

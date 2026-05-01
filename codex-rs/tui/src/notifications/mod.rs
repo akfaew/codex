@@ -23,11 +23,11 @@ impl DesktopNotificationBackend {
                 if supports_osc9(&terminal_info()) {
                     Self::Osc9(Osc9Backend::new())
                 } else {
-                    Self::Bel(BelBackend)
+                    Self::Bel(BelBackend::new())
                 }
             }
             NotificationMethod::Osc9 => Self::Osc9(Osc9Backend::new()),
-            NotificationMethod::Bel => Self::Bel(BelBackend),
+            NotificationMethod::Bel => Self::Bel(BelBackend::new()),
         }
     }
 

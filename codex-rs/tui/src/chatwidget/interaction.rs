@@ -364,67 +364,20 @@ impl ChatWidget {
 
     /// Handles a Ctrl+C press at the chat-widget layer.
     ///
-    /// The first press arms a time-bounded quit shortcut and shows a footer hint via the bottom
-    /// pane. If cancellable work is active, Ctrl+C also submits `Op::Interrupt` after the shortcut
-    /// is armed.
-    ///
-    /// When the double-press quit shortcut is enabled, pressing the same shortcut again before
-    /// expiry requests a shutdown-first quit.
+    /// Ctrl+C is reserved for local cancellation (clearing input, dismissing views) and
+    /// interrupting active work; it never quits the app.
     fn on_ctrl_c(&mut self) {
-        let key = key_hint::ctrl(KeyCode::Char('c'));
-        let modal_or_popup_active = !self.bottom_pane.no_modal_or_popup_active();
-        let should_pause_active_goal = self
-            .bottom_pane
-            .active_view_will_interrupt_turn_on_key_event(KeyEvent::new(
-                KeyCode::Char('c'),
-                KeyModifiers::CONTROL,
-            ));
+        self.bottom_pane.clear_quit_shortcut_hint();
+        self.quit_shortcut_expires_at = None;
+        self.quit_shortcut_key = None;
+
         if self.bottom_pane.on_ctrl_c() == CancellationEvent::Handled {
-            if DOUBLE_PRESS_QUIT_SHORTCUT_ENABLED {
-                if modal_or_popup_active {
-                    self.quit_shortcut_expires_at = None;
-                    self.quit_shortcut_key = None;
-                    self.bottom_pane.clear_quit_shortcut_hint();
-                } else {
-                    self.arm_quit_shortcut(key);
-                }
-            }
-            if should_pause_active_goal {
-                self.pause_active_goal_for_interrupt();
-            }
-            if modal_or_popup_active && self.bottom_pane.no_modal_or_popup_active() {
-                self.on_modal_or_popup_closed();
-            }
             return;
         }
 
-        if !DOUBLE_PRESS_QUIT_SHORTCUT_ENABLED {
-            if self.is_cancellable_work_active() {
-                self.quit_shortcut_expires_at = None;
-                self.quit_shortcut_key = None;
-                self.bottom_pane.clear_quit_shortcut_hint();
-                if self.submit_op(AppCommand::interrupt_and_restore_prompt_if_no_output()) {
-                    self.pause_active_goal_for_interrupt();
-                }
-            } else {
-                self.request_quit_without_confirmation();
-            }
-            return;
-        }
-
-        if self.quit_shortcut_active_for(key) {
-            self.quit_shortcut_expires_at = None;
-            self.quit_shortcut_key = None;
-            self.request_quit_without_confirmation();
-            return;
-        }
-
-        self.arm_quit_shortcut(key);
-
-        if self.is_cancellable_work_active()
-            && self.submit_op(AppCommand::interrupt_and_restore_prompt_if_no_output())
-        {
+        if self.is_cancellable_work_active() {
             self.pause_active_goal_for_interrupt();
+            self.submit_op(AppCommand::interrupt_and_restore_prompt_if_no_output());
         }
     }
 
@@ -470,7 +423,7 @@ impl ChatWidget {
     /// Arm the double-press quit shortcut and show the footer hint.
     ///
     /// This keeps the state machine (`quit_shortcut_*`) in `ChatWidget`, since
-    /// it is the component that interprets Ctrl+C vs Ctrl+D and decides whether
+    /// it is the component that interprets the quit shortcut and decides whether
     /// quitting is currently allowed, while delegating rendering to `BottomPane`.
     pub(super) fn arm_quit_shortcut(&mut self, key: KeyBinding) {
         self.quit_shortcut_expires_at = Instant::now()
@@ -480,7 +433,7 @@ impl ChatWidget {
         self.bottom_pane.show_quit_shortcut_hint(key);
     }
 
-    // Review mode counts as cancellable work so Ctrl+C interrupts instead of quitting.
+    // Review mode counts as cancellable work so Ctrl+C still interrupts.
     fn is_cancellable_work_active(&self) -> bool {
         self.bottom_pane.is_task_running() || self.review.is_review_mode
     }
